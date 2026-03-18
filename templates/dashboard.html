@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnBot — Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+</head>
+<body class="app-page">
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <span class="brand-icon">⬡</span>
+            <span class="brand-name">LearnBot</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard') }}" class="nav-item active">
+                <span class="nav-icon">◈</span> Dashboard
+            </a>
+            <a href="{{ url_for('chat') }}" class="nav-item">
+                <span class="nav-icon">◎</span> AI Tutor
+            </a>
+            <a href="#quiz-section" class="nav-item" onclick="document.getElementById('quiz-section').scrollIntoView({behavior:'smooth'});return false;">
+                <span class="nav-icon">◇</span> Quizzes
+            </a>
+        </nav>
+        <div class="sidebar-bottom">
+            <div class="streak-badge">
+                <span class="streak-fire">🔥</span>
+                <div>
+                    <div class="streak-num">{{ user.streak }}</div>
+                    <div class="streak-label">day streak</div>
+                </div>
+            </div>
+            <a href="{{ url_for('logout') }}" class="nav-item logout">
+                <span class="nav-icon">⊗</span> Logout
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- Header -->
+        <header class="page-header">
+            <div>
+                <h1 class="page-title">Dashboard</h1>
+                <p class="page-subtitle">Hey {{ user.username }}, ready to learn today? ✦</p>
+            </div>
+            <a href="{{ url_for('chat') }}" class="btn-primary">Start Learning →</a>
+        </header>
+
+        <!-- Stats Row -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon green">📚</div>
+                <div class="stat-num">{{ completed }}</div>
+                <div class="stat-label">Topics Explored</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔥</div>
+                <div class="stat-num">{{ user.streak }}</div>
+                <div class="stat-label">Day Streak</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">🎯</div>
+                <div class="stat-num">{{ scores | length }}</div>
+                <div class="stat-label">Quizzes Taken</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-num">{{ progress_pct }}%</div>
+                <div class="stat-label">Overall Progress</div>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="card progress-card">
+            <div class="card-header">
+                <h3>Learning Progress</h3>
+                <span class="badge">{{ user.subject }}</span>
+            </div>
+            <div class="progress-info">
+                <span>{{ completed }} of 10 topics completed</span>
+                <span class="progress-pct">{{ progress_pct }}%</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" style="width: {{ progress_pct }}%"></div>
+            </div>
+            {% if topics %}
+            <div class="topic-chips">
+                {% for topic in topics %}
+                <span class="chip chip-done">✓ {{ topic.topic }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Two column: Preferences + Recent Scores -->
+        <div class="two-col">
+
+            <!-- Preferences Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Learning Preferences</h3>
+                </div>
+                <form action="{{ url_for('update_preferences') }}" method="POST" class="pref-form">
+                    <div class="form-group">
+                        <label>Subject</label>
+                        <select name="subject" class="select-input">
+                            {% for s in ['Physics', 'Chemistry', 'Maths'] %}
+                            <option value="{{ s }}" {% if user.subject == s %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Learning Style</label>
+                        <select name="learning_style" class="select-input">
+                            {% for style in [('visual', '👁 Visual'), ('detailed', '📝 Detailed'), ('short', '⚡ Short & Sweet'), ('examples', '💡 Example-Based')] %}
+                            <option value="{{ style[0] }}" {% if user.learning_style == style[0] %}selected{% endif %}>{{ style[1] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Level</label>
+                        <div class="radio-group">
+                            <label class="radio-option {% if user.level == 'beginner' %}active{% endif %}">
+                                <input type="radio" name="level" value="beginner" {% if user.level == 'beginner' %}checked{% endif %}>
+                                Beginner
+                            </label>
+                            <label class="radio-option {% if user.level == 'intermediate' %}active{% endif %}">
+                                <input type="radio" name="level" value="intermediate" {% if user.level == 'intermediate' %}checked{% endif %}>
+                                Intermediate
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary btn-full">Save Preferences</button>
+                </form>
+            </div>
+
+            <!-- Quiz Scores -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Recent Quiz Scores</h3>
+                </div>
+                {% if scores %}
+                <div class="score-list">
+                    {% for s in scores %}
+                    <div class="score-item">
+                        <div class="score-info">
+                            <div class="score-topic">{{ s.topic }}</div>
+                            <div class="score-subject">{{ s.subject }} · {{ s.taken_at[:10] }}</div>
+                        </div>
+                        <div class="score-badge {% if s.score >= 4 %}score-great{% elif s.score >= 3 %}score-ok{% else %}score-low{% endif %}">
+                            {{ s.score }}/{{ s.total }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">📋</div>
+                    <p>No quizzes taken yet.<br>Try one below!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quiz Section -->
+        <div class="card" id="quiz-section">
+            <div class="card-header">
+                <h3>Available Quizzes — {{ user.subject }}</h3>
+                <span class="badge">5 questions each</span>
+            </div>
+            <div class="quiz-grid">
+                {% for topic in quiz_topics %}
+                <a href="{{ url_for('quiz', topic=topic) }}" class="quiz-card-link">
+                    <div class="quiz-card">
+                        <div class="quiz-icon">📝</div>
+                        <div class="quiz-topic">{{ topic }}</div>
+                        <div class="quiz-meta">5 MCQs · {{ user.subject }}</div>
+                        <span class="quiz-start">Start Quiz →</span>
+                    </div>
+                </a>
+                {% else %}
+                <p class="empty-text">No quizzes available for current subject.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnBot — Quiz: {{ topic }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+</head>
+<body class="app-page">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <span class="brand-icon">⬡</span>
+            <span class="brand-name">LearnBot</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard') }}" class="nav-item">
+                <span class="nav-icon">◈</span> Dashboard
+            </a>
+            <a href="{{ url_for('chat') }}" class="nav-item">
+                <span class="nav-icon">◎</span> AI Tutor
+            </a>
+        </nav>
+        <div class="sidebar-bottom">
+            <div class="streak-badge">
+                <span class="streak-fire">🔥</span>
+                <div>
+                    <div class="streak-num">{{ user.streak }}</div>
+                    <div class="streak-label">day streak</div>
+                </div>
+            </div>
+            <a href="{{ url_for('logout') }}" class="nav-item logout">
+                <span class="nav-icon">⊗</span> Logout
+            </a>
+        </div>
+    </aside>
+
+    <!-- Quiz Content -->
+    <main class="main-content">
+        <header class="page-header">
+            <div>
+                <h1 class="page-title">Quiz: {{ topic }}</h1>
+                <p class="page-subtitle">{{ user.subject }} · 5 Questions · Choose the best answer</p>
+            </div>
+            <a href="{{ url_for('dashboard') }}" class="btn-ghost">← Back</a>
+        </header>
+
+        <!-- Quiz Form -->
+        <div class="card quiz-container" id="quizContainer">
+
+            <!-- Progress bar for quiz -->
+            <div class="quiz-progress">
+                <div class="quiz-progress-fill" id="quizProgressFill" style="width: 0%"></div>
+            </div>
+
+            {% for i, q in questions | enumerate %}
+            <div class="quiz-question {% if i > 0 %}hidden{% endif %}" id="question-{{ i }}" data-index="{{ i }}">
+                <div class="question-num">Question {{ i + 1 }} of {{ questions | length }}</div>
+                <div class="question-text">{{ q.q }}</div>
+                <div class="options-list">
+                    {% for j, opt in q.options | enumerate %}
+                    <label class="option-item" data-q="{{ i }}" data-opt="{{ j }}">
+                        <input type="radio" name="q{{ i }}" value="{{ j }}" class="option-radio" onchange="selectOption({{ i }}, {{ j }})">
+                        <span class="option-letter">{{ ['A','B','C','D'][j] }}</span>
+                        <span class="option-text">{{ opt }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="question-nav">
+                    {% if i > 0 %}
+                    <button class="btn-ghost" onclick="goToQuestion({{ i - 1 }})">← Previous</button>
+                    {% else %}
+                    <span></span>
+                    {% endif %}
+
+                    {% if i < questions | length - 1 %}
+                    <button class="btn-primary" id="nextBtn-{{ i }}" onclick="goToQuestion({{ i + 1 }})">Next →</button>
+                    {% else %}
+                    <button class="btn-primary" id="submitBtn" onclick="submitQuiz()">Submit Quiz ✓</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Result Panel (hidden until submitted) -->
+        <div class="card result-panel hidden" id="resultPanel">
+            <div class="result-header">
+                <div class="result-icon" id="resultIcon">🎉</div>
+                <div class="result-score" id="resultScore">0/5</div>
+                <div class="result-msg" id="resultMsg">Great job!</div>
+            </div>
+
+            <div class="result-breakdown" id="resultBreakdown"></div>
+
+            <div class="result-actions">
+                <a href="{{ url_for('dashboard') }}" class="btn-primary">Back to Dashboard</a>
+                <button class="btn-ghost" onclick="retakeQuiz()">Retake Quiz</button>
+                <a href="{{ url_for('chat') }}" class="btn-ghost">Ask AI Tutor</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Pass data to JS -->
+    <script>
+        // Quiz configuration passed from Flask
+        const QUIZ_TOPIC = "{{ topic }}";
+        const TOTAL_QUESTIONS = {{ questions | length }};
+        let userAnswers = new Array(TOTAL_QUESTIONS).fill(-1);
+        let currentQuestion = 0;
+
+        // Move to a specific question
+        function goToQuestion(idx) {
+            document.getElementById(`question-${currentQuestion}`).classList.add('hidden');
+            currentQuestion = idx;
+            document.getElementById(`question-${currentQuestion}`).classList.remove('hidden');
+            // Update progress bar
+            const pct = ((idx + 1) / TOTAL_QUESTIONS) * 100;
+            document.getElementById('quizProgressFill').style.width = pct + '%';
+        }
+
+        // Record user's selection
+        function selectOption(qIdx, optIdx) {
+            userAnswers[qIdx] = optIdx;
+            // Highlight selected option
+            document.querySelectorAll(`[data-q="${qIdx}"]`).forEach(el => el.classList.remove('selected'));
+            document.querySelectorAll(`[data-q="${qIdx}"][data-opt="${optIdx}"]`).forEach(el => el.classList.add('selected'));
+        }
+
+        // Submit quiz to server
+        function submitQuiz() {
+            fetch('/api/submit_quiz', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ topic: QUIZ_TOPIC, answers: userAnswers })
+            })
+            .then(r => r.json())
+            .then(data => showResults(data));
+        }
+
+        // Display results
+        function showResults(data) {
+            document.getElementById('quizContainer').classList.add('hidden');
+            const panel = document.getElementById('resultPanel');
+            panel.classList.remove('hidden');
+
+            const score = data.score;
+            const total = data.total;
+            document.getElementById('resultScore').textContent = `${score} / ${total}`;
+
+            if (score === total) {
+                document.getElementById('resultIcon').textContent = '🏆';
+                document.getElementById('resultMsg').textContent = 'Perfect score! Outstanding!';
+            } else if (score >= 4) {
+                document.getElementById('resultIcon').textContent = '🎉';
+                document.getElementById('resultMsg').textContent = 'Excellent! Almost perfect!';
+            } else if (score >= 3) {
+                document.getElementById('resultIcon').textContent = '👍';
+                document.getElementById('resultMsg').textContent = 'Good job! Keep practicing!';
+            } else {
+                document.getElementById('resultIcon').textContent = '📚';
+                document.getElementById('resultMsg').textContent = 'Keep studying — you\'ll get it!';
+            }
+
+            // Build breakdown
+            const bd = document.getElementById('resultBreakdown');
+            bd.innerHTML = data.results.map((r, i) => `
+                <div class="breakdown-item ${r.is_correct ? 'correct' : 'wrong'}">
+                    <div class="breakdown-q">${i+1}. ${r.question}</div>
+                    <div class="breakdown-ans">
+                        <span class="${r.is_correct ? 'tag-correct' : 'tag-wrong'}">
+                            Your answer: ${r.options[r.user_answer] || 'Not answered'}
+                        </span>
+                        ${!r.is_correct ? `<span class="tag-correct">Correct: ${r.options[r.correct]}</span>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Retake the quiz
+        function retakeQuiz() {
+            location.reload();
+        }
+
+        // Initialise progress bar
+        document.getElementById('quizProgressFill').style.width = (1 / TOTAL_QUESTIONS * 100) + '%';
+    </script>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
