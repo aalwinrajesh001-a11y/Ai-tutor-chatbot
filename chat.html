@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnBot — AI Tutor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+</head>
+<body class="app-page">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <span class="brand-icon">⬡</span>
+            <span class="brand-name">LearnBot</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard') }}" class="nav-item">
+                <span class="nav-icon">◈</span> Dashboard
+            </a>
+            <a href="{{ url_for('chat') }}" class="nav-item active">
+                <span class="nav-icon">◎</span> AI Tutor
+            </a>
+        </nav>
+        <div class="sidebar-bottom">
+            <div class="streak-badge">
+                <span class="streak-fire">🔥</span>
+                <div>
+                    <div class="streak-num">{{ user.streak }}</div>
+                    <div class="streak-label">day streak</div>
+                </div>
+            </div>
+            <a href="{{ url_for('logout') }}" class="nav-item logout">
+                <span class="nav-icon">⊗</span> Logout
+            </a>
+        </div>
+    </aside>
+
+    <!-- Chat Main -->
+    <main class="chat-main">
+
+        <!-- Chat Header -->
+        <header class="chat-header">
+            <div class="chat-meta">
+                <div class="bot-avatar">⬡</div>
+                <div>
+                    <div class="bot-name">LearnBot AI</div>
+                    <div class="bot-status">
+                        <span class="status-dot"></span>
+                        {{ user.subject }} · {{ user.learning_style }} · {{ user.level }}
+                    </div>
+                </div>
+            </div>
+            <div class="chat-actions">
+                <button class="btn-ghost btn-sm" onclick="clearChat()">Clear Chat</button>
+                <a href="{{ url_for('dashboard') }}" class="btn-ghost btn-sm">Dashboard</a>
+            </div>
+        </header>
+
+        <!-- Suggestion chips shown before any chat -->
+        <div class="suggestion-bar" id="suggestionBar">
+            <span class="suggestion-label">Try asking:</span>
+            {% set suggestions = {
+                'Physics': ['Explain Newton\'s laws', 'What is velocity?', 'How do waves travel?'],
+                'Chemistry': ['What is an atom?', 'Explain pH scale', 'What causes rusting?'],
+                'Maths': ['Solve quadratic equations', 'Explain Pythagoras theorem', 'What is a slope?']
+            } %}
+            {% for chip in suggestions.get(user.subject, ['Ask me anything']) %}
+            <button class="suggestion-chip" onclick="sendSuggestion('{{ chip }}')">{{ chip }}</button>
+            {% endfor %}
+        </div>
+
+        <!-- Messages Area -->
+        <div class="chat-messages" id="chatMessages">
+
+            <!-- Welcome message (shown if no history) -->
+            {% if not history %}
+            <div class="message bot-message welcome-msg">
+                <div class="msg-avatar">⬡</div>
+                <div class="msg-bubble">
+                    <p>👋 Hey <strong>{{ user.username }}</strong>! I'm LearnBot, your personal AI tutor.</p>
+                    <p>I'm here to teach you <strong>{{ user.subject }}</strong> in a <strong>{{ user.learning_style }}</strong> style, tuned for <strong>{{ user.level }}</strong> learners.</p>
+                    <p>Ask me anything — a concept, formula, topic, or problem. Let's learn! 🚀</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Load existing chat history -->
+            {% for msg in history %}
+            {% if msg.role == 'user' %}
+            <div class="message user-message">
+                <div class="msg-bubble">{{ msg.message }}</div>
+            </div>
+            {% else %}
+            <div class="message bot-message">
+                <div class="msg-avatar">⬡</div>
+                <div class="msg-bubble" data-markdown="{{ msg.message }}"></div>
+            </div>
+            {% endif %}
+            {% endfor %}
+
+            <!-- Typing indicator (hidden by default) -->
+            <div class="message bot-message" id="typingIndicator" style="display:none;">
+                <div class="msg-avatar">⬡</div>
+                <div class="msg-bubble typing-bubble">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-area">
+            <div class="input-wrapper">
+                <textarea
+                    id="chatInput"
+                    class="chat-input"
+                    placeholder="Ask LearnBot anything about {{ user.subject }}..."
+                    rows="1"
+                    onkeydown="handleKeyDown(event)"
+                ></textarea>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                    <span>↑</span>
+                </button>
+            </div>
+            <div class="input-hint">Press Enter to send · Shift+Enter for new line</div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
