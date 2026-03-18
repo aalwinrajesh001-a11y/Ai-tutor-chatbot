@@ -16,10 +16,10 @@ import google.generativeai as genai
 # App Setup
 # ─────────────────────────────────────────────
 app = Flask(__name__)
-app.secret_key = "learnbot_secret_2024"  # Used to encrypt session cookies
+app.secret_key = os.environ.get("SECRET_KEY", "learnbot_secret_2024")  # Used to encrypt session cookies
 
 # Configure Gemini AI
-GEMINI_API_KEY = "AIzaSyDYjv794dcJMu66XqB1qVSaBDbM3caGBWk"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 genai.configure(api_key=GEMINI_API_KEY)
 
 # ─────────────────────────────────────────────
