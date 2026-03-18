@@ -533,6 +533,7 @@ def submit_quiz():
 app.jinja_env.globals.update(enumerate=enumerate)
 
 if __name__ == "__main__":
-    init_db()  # Create tables if they don't exist
-    print("🚀 LearnBot is running at http://localhost:5000")
-    app.run(debug=True, port=5000)
+    init_db()  # keep this
+
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
